@@ -36,12 +36,13 @@ Um reprodutor de música incrível para todas as suas necessidades!
 - [Russian :ru:](/README.RU.md)
 - [Japanese :jp:](/README.JA.md)
 - [Belarusian :belarus:](/README.BE.md)
+- [Indonesian :indonesia:](/README.ID.md)
 
 Obrigado à [Lucas](https://github.com/LucasPJS) e [LuanRT](https://github.com/LuanRT) por esta tradução.
 
 ## Features
 
-* Ótima qualidade de streaming (320kbps aac)
+* Alta qualidade de streaming(320kbps AAC)
 * Busca por música, album, artista e playlists
 * Playlists em alta em idiomas específicos
 * Músicas populares

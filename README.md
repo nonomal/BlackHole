@@ -14,36 +14,37 @@ An Open-Source Music Player App for all your needs!
 
 ## Download
 
-[<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png"
-     alt="Get it on IzzyDroid"
-     height="100">](https://android.izzysoft.de/repo/apk/com.shadow.blackhole)
+[<img src="get_website.png"
+     alt="Download from Website"
+     height="90">](https://sangwan5688.github.io/download/)
+[<img src="get_github.png"
+     alt="Download from GitHub"
+     height="90">](https://github.com/Sangwan5688/BlackHole/releases)
+[<img src="get_telegram.png"
+     alt="Join Telegram Channel"
+     height="90">](https://t.me/blackhole_official)
 [<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
      alt="Get it on F-Droid"
-     height="100">](https://f-droid.org/packages/com.shadow.blackhole/)
-
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-[<img src="https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white"
-     alt="Download from GitHub"
-     height="60">](https://github.com/Sangwan5688/BlackHole/releases)
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-[<img src="https://img.shields.io/badge/Telegram-2CA5E0?logo=telegram&logoColor=white"
-     alt="Join Telegram Channel"
-     height="60">](https://t.me/blackhole_official)
+     height="90">](https://f-droid.org/packages/com.shadow.blackhole/)
+[<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png"
+     alt="Get it on IzzyDroid"
+     height="90">](https://android.izzysoft.de/repo/apk/com.shadow.blackhole)
 
 ## Translations
-
+- [Turkish :tr:](/README.TR.md)
 - [Spanish :es:](/README.ES.md)
 - [Russian :ru:](/README.RU.md)
 - [French :fr:](/README.FR.md)
 - [Portuguese :brazil:](/README.PT.md)
 - [Japanese :jp:](/README.JA.md)
 - [Belarusian :belarus:](/README.BE.md)
+- [Indonesian :indonesia:](/README.ID.md)
 
 [Translate App on Weblate](https://hosted.weblate.org/projects/blackhole/translations/)
 
 ## Features
 
-- Best Streaming Quality (320kbps aac)
+- High Streaming Quality (320kbps AAC)
 - Song, Album, Artist and Playlist Search
 - Language Specific Promoted Playlists
 - Trending Songs
@@ -148,3 +149,16 @@ You can join our [Telegram Channel](https://t.me/blackhole_official) or [Telegra
 ## What's New
 
 To read full changelog visit the [wiki page](https://github.com/Sangwan5688/BlackHole/wiki/Changelog)
+
+
+## Disclaimer
+```
+BlackHole does not own or have any affiliation with the songs and other content available through the app.
+All songs and other content are the property of their respective owners and are protected by copyright law.
+BlackHole is not responsible for any infringement of copyright or other intellectual property rights that may result
+from the use of the songs and other content available through the app. BlackHole uses third-party plugins and
+is not responsible for any harm or damage to the respective owners or any other parties resulting from the use
+of the songs and other content through the third-party plugins.
+By using the app, you agree to use the songs and other content only for personal, non-commercial purposes
+and in compliance with all applicable laws and regulations.
+```

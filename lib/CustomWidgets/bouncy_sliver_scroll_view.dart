@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with BlackHole.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Copyright (c) 2021-2022, Ankit Sangwan
+ * Copyright (c) 2021-2023, Ankit Sangwan
  */
 
 import 'dart:io';
@@ -32,6 +32,7 @@ class BouncyImageSliverScrollView extends StatelessWidget {
   final String? imageUrl;
   final bool localImage;
   final String placeholderImage;
+  final bool fromYt;
   BouncyImageSliverScrollView({
     super.key,
     required this.scrollController,
@@ -40,6 +41,7 @@ class BouncyImageSliverScrollView extends StatelessWidget {
     required this.title,
     this.placeholderImage = 'assets/cover.jpg',
     this.localImage = false,
+    this.fromYt = false,
     this.imageUrl,
     this.actions,
   });
@@ -75,8 +77,9 @@ class BouncyImageSliverScrollView extends StatelessWidget {
                 ),
               );
     // final bool rotated =
-    // MediaQuery.of(context).size.height < MediaQuery.of(context).size.width;
-    final double expandedHeight = MediaQuery.of(context).size.height * 0.4;
+    // MediaQuery.sizeOf(context).height < MediaQuery.sizeOf(context).width;
+    final double expandedHeight =
+        MediaQuery.sizeOf(context).height * (fromYt ? 0.2 : 0.4);
 
     return CustomScrollView(
       controller: scrollController,
@@ -128,6 +131,7 @@ class BouncyImageSliverScrollView extends StatelessWidget {
               expandedHeight: expandedHeight,
               actions: actions,
               flexibleSpace: FlexibleSpaceBar(
+                titlePadding: EdgeInsets.zero,
                 title: Opacity(
                   opacity: max(0, min(1 - _opacity.value, 1)),
                   child: Text(

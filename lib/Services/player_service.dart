@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with BlackHole.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Copyright (c) 2021-2022, Ankit Sangwan
+ * Copyright (c) 2021-2023, Ankit Sangwan
  */
 
 import 'dart:io';
@@ -22,9 +22,11 @@ import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:blackhole/Helpers/mediaitem_converter.dart';
 import 'package:blackhole/Screens/Player/audioplayer.dart';
+import 'package:blackhole/Services/youtube_services.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:get_it/get_it.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:logging/logging.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -40,6 +42,7 @@ class PlayerInvoke {
     bool recommend = true,
     bool fromDownloads = false,
     bool shuffle = false,
+    String? playlistBox,
   }) async {
     final int globalIndex = index < 0 ? 0 : index;
     bool? offline = isOffline;
@@ -52,12 +55,10 @@ class PlayerInvoke {
       } else {
         offline = true;
       }
-    } else {
-      offline = offline;
     }
 
     if (!fromMiniplayer) {
-      if (!Platform.isAndroid) {
+      if (Platform.isIOS) {
         // Don't know why but it fixes the playback issue with iOS Side
         audioHandler.stop();
       }
@@ -68,7 +69,12 @@ class PlayerInvoke {
                 ? setOffDesktopValues(finalList, globalIndex)
                 : setOffValues(finalList, globalIndex);
       } else {
-        setValues(finalList, globalIndex, recommend: recommend);
+        setValues(
+          finalList,
+          globalIndex,
+          recommend: recommend,
+          // playlistBox: playlistBox,
+        );
       }
     }
   }
@@ -88,7 +94,7 @@ class PlayerInvoke {
 
     final String playAlbum = response.album!;
     final int playDuration = response.duration ?? 180000;
-    final String imagePath = '${tempDir.path}/${response.displayNameWOExt}.jpg';
+    final String imagePath = '${tempDir.path}/${response.displayNameWOExt}.png';
 
     final MediaItem tempDict = MediaItem(
       id: response.id.toString(),
@@ -178,23 +184,107 @@ class PlayerInvoke {
     updateNplay(queue, index);
   }
 
-  static void setValues(List response, int index, {bool recommend = true}) {
+  static Future<void> refreshYtLink(Map playItem) async {
+    // final bool cacheSong =
+    // Hive.box('settings').get('cacheSong', defaultValue: false) as bool;
+    final int expiredAt = int.parse((playItem['expire_at'] ?? '0').toString());
+    if ((DateTime.now().millisecondsSinceEpoch ~/ 1000) + 350 > expiredAt) {
+      Logger.root.info(
+        'before service | youtube link expired for ${playItem["title"]}',
+      );
+      if (Hive.box('ytlinkcache').containsKey(playItem['id'])) {
+        final cache = await Hive.box('ytlinkcache').get(playItem['id']);
+        if (cache is List) {
+          int minExpiredAt = 0;
+          for (final e in cache) {
+            final int cachedExpiredAt = int.parse(e['expireAt'].toString());
+            if (minExpiredAt == 0 || cachedExpiredAt < minExpiredAt) {
+              minExpiredAt = cachedExpiredAt;
+            }
+          }
+
+          if ((DateTime.now().millisecondsSinceEpoch ~/ 1000) + 350 >
+              minExpiredAt) {
+            // cache expired
+            Logger.root
+                .info('youtube link expired in cache for ${playItem["title"]}');
+            final newData = await YouTubeServices.instance
+                .refreshLink(playItem['id'].toString());
+            Logger.root.info(
+              'before service | received new link for ${playItem["title"]}',
+            );
+            if (newData != null) {
+              playItem['url'] = newData['url'];
+              playItem['duration'] = newData['duration'];
+              playItem['expire_at'] = newData['expire_at'];
+            }
+          } else {
+            // giving cache link
+            Logger.root
+                .info('youtube link found in cache for ${playItem["title"]}');
+            playItem['url'] = cache.last['url'];
+            playItem['expire_at'] = cache.last['expireAt'];
+          }
+        } else {
+          final newData = await YouTubeServices.instance
+              .refreshLink(playItem['id'].toString());
+          Logger.root.info(
+            'before service | received new link for ${playItem["title"]}',
+          );
+          if (newData != null) {
+            playItem['url'] = newData['url'];
+            playItem['duration'] = newData['duration'];
+            playItem['expire_at'] = newData['expire_at'];
+          }
+        }
+      } else {
+        final newData = await YouTubeServices.instance
+            .refreshLink(playItem['id'].toString());
+        Logger.root.info(
+          'before service | received new link for ${playItem["title"]}',
+        );
+        if (newData != null) {
+          playItem['url'] = newData['url'];
+          playItem['duration'] = newData['duration'];
+          playItem['expire_at'] = newData['expire_at'];
+        }
+      }
+    }
+  }
+
+  static Future<void> setValues(
+    List response,
+    int index, {
+    bool recommend = true,
+    // String? playlistBox,
+  }) async {
     final List<MediaItem> queue = [];
+    final Map playItem = response[index] as Map;
+    final Map? nextItem =
+        index == response.length - 1 ? null : response[index + 1] as Map;
+    if (playItem['genre'] == 'YouTube') {
+      await refreshYtLink(playItem);
+    }
+    if (nextItem != null && nextItem['genre'] == 'YouTube') {
+      await refreshYtLink(nextItem);
+    }
+
     queue.addAll(
       response.map(
         (song) => MediaItemConverter.mapToMediaItem(
           song as Map,
           autoplay: recommend,
+          // playlistBox: playlistBox,
         ),
       ),
     );
-    updateNplay(queue, index);
+    await updateNplay(queue, index);
   }
 
   static Future<void> updateNplay(List<MediaItem> queue, int index) async {
-    await audioHandler.setShuffleMode(AudioServiceShuffleMode.none);
     await audioHandler.updateQueue(queue);
-    await audioHandler.skipToQueueItem(index);
+    await audioHandler.setShuffleMode(AudioServiceShuffleMode.none);
+    await audioHandler.customAction('skipToMediaItem', {'id': queue[index].id});
     await audioHandler.play();
     final String repeatMode =
         Hive.box('settings').get('repeatMode', defaultValue: 'None').toString();
@@ -204,13 +294,10 @@ class PlayerInvoke {
       switch (repeatMode) {
         case 'None':
           audioHandler.setRepeatMode(AudioServiceRepeatMode.none);
-          break;
         case 'All':
           audioHandler.setRepeatMode(AudioServiceRepeatMode.all);
-          break;
         case 'One':
           audioHandler.setRepeatMode(AudioServiceRepeatMode.one);
-          break;
         default:
           break;
       }

@@ -14,22 +14,23 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with BlackHole.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Copyright (c) 2021-2022, Ankit Sangwan
+ * Copyright (c) 2021-2023, Ankit Sangwan
  */
 
 import 'package:app_links/app_links.dart';
 import 'package:blackhole/APIs/spotify_api.dart';
 import 'package:blackhole/CustomWidgets/custom_physics.dart';
+import 'package:blackhole/CustomWidgets/drawer.dart';
 import 'package:blackhole/CustomWidgets/empty_screen.dart';
-import 'package:blackhole/Helpers/countrycodes.dart';
+import 'package:blackhole/CustomWidgets/image_card.dart';
+import 'package:blackhole/Helpers/spotify_country.dart';
+import 'package:blackhole/Helpers/spotify_helper.dart';
 // import 'package:blackhole/Helpers/countrycodes.dart';
 import 'package:blackhole/Screens/Search/search.dart';
-import 'package:blackhole/Screens/Settings/setting.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:blackhole/constants/countrycodes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-// import 'package:html_unescape/html_unescape_small.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 List localSongs = [];
@@ -57,8 +58,8 @@ class _TopChartsState extends State<TopCharts>
   @override
   Widget build(BuildContext cntxt) {
     super.build(context);
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final bool rotated = MediaQuery.of(context).size.height < screenWidth;
+    final double screenWidth = MediaQuery.sizeOf(context).width;
+    final bool rotated = MediaQuery.sizeOf(context).height < screenWidth;
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -82,7 +83,7 @@ class _TopChartsState extends State<TopCharts>
                 child: Text(
                   AppLocalizations.of(context)!.local,
                   style: TextStyle(
-                    color: Theme.of(context).textTheme.bodyText1!.color,
+                    color: Theme.of(context).textTheme.bodyLarge!.color,
                   ),
                 ),
               ),
@@ -90,7 +91,7 @@ class _TopChartsState extends State<TopCharts>
                 child: Text(
                   AppLocalizations.of(context)!.global,
                   style: TextStyle(
-                    color: Theme.of(context).textTheme.bodyText1!.color,
+                    color: Theme.of(context).textTheme.bodyLarge!.color,
                   ),
                 ),
               ),
@@ -100,33 +101,14 @@ class _TopChartsState extends State<TopCharts>
             AppLocalizations.of(context)!.spotifyCharts,
             style: TextStyle(
               fontSize: 18,
-              color: Theme.of(context).textTheme.bodyText1!.color,
+              color: Theme.of(context).textTheme.bodyLarge!.color,
             ),
           ),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
           automaticallyImplyLeading: false,
-          leading: (rotated && screenWidth < 1050)
-              ? null
-              : Builder(
-                  builder: (BuildContext context) {
-                    return Transform.rotate(
-                      angle: 22 / 7 * 2,
-                      child: IconButton(
-                        color: Theme.of(context).iconTheme.color,
-                        icon: const Icon(
-                          Icons.horizontal_split_rounded,
-                        ),
-                        onPressed: () {
-                          Scaffold.of(cntxt).openDrawer();
-                        },
-                        tooltip: MaterialLocalizations.of(cntxt)
-                            .openAppDrawerTooltip,
-                      ),
-                    );
-                  },
-                ),
+          leading: rotated ? null : homeDrawer(context: context),
         ),
         body: NotificationListener(
           onNotification: (overscroll) {
@@ -163,10 +145,10 @@ class _TopChartsState extends State<TopCharts>
 }
 
 Future<List> getChartDetails(String accessToken, String type) async {
-  final String globalPlaylistId = ConstantCodes.localChartCodes['Global']!;
-  final String localPlaylistId = ConstantCodes.localChartCodes.containsKey(type)
-      ? ConstantCodes.localChartCodes[type]!
-      : ConstantCodes.localChartCodes['India']!;
+  final String globalPlaylistId = CountryCodes.localChartCodes['Global']!;
+  final String localPlaylistId = CountryCodes.localChartCodes.containsKey(type)
+      ? CountryCodes.localChartCodes[type]!
+      : CountryCodes.localChartCodes['India']!;
   final String playlistId =
       type == 'Global' ? globalPlaylistId : localPlaylistId;
   final List data = [];
@@ -190,32 +172,26 @@ Future<List> getChartDetails(String accessToken, String type) async {
 }
 
 Future<void> scrapData(String type, {bool signIn = false}) async {
-  String code;
-  String accessToken = Hive.box('settings')
-      .get('spotifyAccessToken', defaultValue: 'null')
-      .toString();
-  String refreshToken = Hive.box('settings')
-      .get('spotifyRefreshToken', defaultValue: 'null')
-      .toString();
   final bool spotifySigned =
       Hive.box('settings').get('spotifySigned', defaultValue: false) as bool;
 
   if (!spotifySigned && !signIn) {
     return;
   }
-
-  if (accessToken == 'null' || refreshToken == 'null') {
+  final String? accessToken = await retriveAccessToken();
+  if (accessToken == null) {
     launchUrl(
       Uri.parse(
         SpotifyApi().requestAuthorization(),
       ),
       mode: LaunchMode.externalApplication,
     );
-    AppLinks(
-      onAppLink: (Uri uri, String link) async {
-        closeInAppWebView();
+    final appLinks = AppLinks();
+    appLinks.allUriLinkStream.listen(
+      (uri) async {
+        final link = uri.toString();
         if (link.contains('code=')) {
-          code = link.split('code=')[1];
+          final code = link.split('code=')[1];
           Hive.box('settings').put('spotifyAppCode', code);
           final currentTime = DateTime.now().millisecondsSinceEpoch / 1000;
           final List<String> data =
@@ -227,6 +203,7 @@ Future<void> scrapData(String type, {bool signIn = false}) async {
             Hive.box('settings')
                 .put('spotifyTokenExpireAt', currentTime + int.parse(data[2]));
           }
+
           final temp = await getChartDetails(data[0], type);
           if (temp.isNotEmpty) {
             Hive.box('cache').put('${type}_chart', temp);
@@ -245,25 +222,6 @@ Future<void> scrapData(String type, {bool signIn = false}) async {
       },
     );
   } else {
-    final double expiredAt = Hive.box('settings')
-        .get('spotifyTokenExpireAt', defaultValue: 0) as double;
-    final currentTime = DateTime.now().millisecondsSinceEpoch / 1000;
-    if ((currentTime + 60) >= expiredAt) {
-      final List<String> data =
-          await SpotifyApi().getAccessToken(refreshToken: refreshToken);
-      if (data.isNotEmpty) {
-        Hive.box('settings').put('spotifySigned', true);
-        accessToken = data[0];
-        Hive.box('settings').put('spotifyAccessToken', data[0]);
-        if (data[1] != 'null') {
-          refreshToken = data[1];
-          Hive.box('settings').put('spotifyRefreshToken', data[1]);
-        }
-        Hive.box('settings')
-            .put('spotifyTokenExpireAt', currentTime + int.parse(data[2]));
-      }
-    }
-
     final temp = await getChartDetails(accessToken, type);
     if (temp.isNotEmpty) {
       Hive.box('cache').put('${type}_chart', temp);
@@ -338,6 +296,10 @@ class _TopPageState extends State<TopPage>
                     onPressed: () {
                       scrapData(widget.type, signIn: true);
                     },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      foregroundColor: Colors.black,
+                    ),
                     child: Text(AppLocalizations.of(context)!.signInSpotify),
                   ),
                 ),
@@ -355,9 +317,9 @@ class _TopPageState extends State<TopPage>
                         'Service Unavailable',
                         20,
                       )
-                    : Column(
+                    : const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           CircularProgressIndicator(),
                         ],
                       ),
@@ -370,33 +332,8 @@ class _TopPageState extends State<TopPage>
                   itemExtent: 70.0,
                   itemBuilder: (context, index) {
                     return ListTile(
-                      leading: Card(
-                        elevation: 5,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(7.0),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: Stack(
-                          children: [
-                            const Image(
-                              image: AssetImage('assets/cover.jpg'),
-                            ),
-                            if (showList[index]['image_url_small'] != '')
-                              CachedNetworkImage(
-                                fit: BoxFit.cover,
-                                imageUrl: showList[index]['image_url_small']
-                                    .toString(),
-                                errorWidget: (context, _, __) => const Image(
-                                  fit: BoxFit.cover,
-                                  image: AssetImage('assets/cover.jpg'),
-                                ),
-                                placeholder: (context, url) => const Image(
-                                  fit: BoxFit.cover,
-                                  image: AssetImage('assets/cover.jpg'),
-                                ),
-                              ),
-                          ],
-                        ),
+                      leading: imageCard(
+                        imageUrl: showList[index]['image_url_small'].toString(),
                       ),
                       title: Text(
                         '${index + 1}. ${showList[index]["name"]}',
@@ -416,7 +353,9 @@ class _TopPageState extends State<TopPage>
                         onSelected: (int? value) async {
                           if (value == 0) {
                             await launchUrl(
-                              Uri.parse(showList[index]['url'].toString()),
+                              Uri.parse(
+                                showList[index]['spotifyUrl'].toString(),
+                              ),
                               mode: LaunchMode.externalApplication,
                             );
                           }
@@ -441,7 +380,9 @@ class _TopPageState extends State<TopPage>
                           context,
                           MaterialPageRoute(
                             builder: (context) => SearchPage(
-                              query: showList[index]['name'].toString(),
+                              query:
+                                  '${showList[index]["name"]} - ${showList[index]["artist"]}',
+                              fromDirectSearch: true,
                             ),
                           ),
                         );

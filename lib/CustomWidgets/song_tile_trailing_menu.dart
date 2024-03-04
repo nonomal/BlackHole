@@ -14,24 +14,23 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with BlackHole.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Copyright (c) 2021-2022, Ankit Sangwan
+ * Copyright (c) 2021-2023, Ankit Sangwan
  */
 
 import 'package:audio_service/audio_service.dart';
 import 'package:blackhole/CustomWidgets/add_playlist.dart';
 import 'package:blackhole/Helpers/add_mediaitem_to_queue.dart';
 import 'package:blackhole/Helpers/mediaitem_converter.dart';
+import 'package:blackhole/Helpers/radio.dart';
 import 'package:blackhole/Screens/Common/song_list.dart';
 import 'package:blackhole/Screens/Search/albums.dart';
 import 'package:blackhole/Screens/Search/search.dart';
-import 'package:blackhole/Services/youtube_services.dart';
+import 'package:blackhole/Services/yt_music.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:hive/hive.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 class SongTileTrailingMenu extends StatefulWidget {
   final Map data;
@@ -158,6 +157,19 @@ class _SongTileTrailingMenuState extends State<SongTileTrailingMenu> {
                 ),
               ),
         PopupMenuItem(
+          value: 7,
+          child: Row(
+            children: [
+              Icon(
+                Icons.podcasts_rounded,
+                color: Theme.of(context).iconTheme.color,
+              ),
+              const SizedBox(width: 10.0),
+              Text(AppLocalizations.of(context)!.playRadio),
+            ],
+          ),
+        ),
+        PopupMenuItem(
           value: 3,
           child: Row(
             children: [
@@ -175,7 +187,6 @@ class _SongTileTrailingMenuState extends State<SongTileTrailingMenu> {
         switch (value) {
           case 3:
             Share.share(widget.data['perma_url'].toString());
-            break;
 
           case 4:
             Navigator.push(
@@ -192,19 +203,16 @@ class _SongTileTrailingMenuState extends State<SongTileTrailingMenu> {
                 ),
               ),
             );
-            break;
           case 6:
             widget.deleteLiked!(widget.data);
-            break;
+          case 7:
+            createRadioItems(stationNames: [mediaItem.id]);
           case 0:
             AddToPlaylist().addToPlaylist(context, mediaItem);
-            break;
           case 1:
             addToNowPlaying(context: context, mediaItem: mediaItem);
-            break;
           case 2:
             playNext(mediaItem, context);
-            break;
           default:
             Navigator.push(
               context,
@@ -224,7 +232,7 @@ class _SongTileTrailingMenuState extends State<SongTileTrailingMenu> {
 }
 
 class YtSongTileTrailingMenu extends StatefulWidget {
-  final Video data;
+  final Map data;
   const YtSongTileTrailingMenu({super.key, required this.data});
 
   @override
@@ -338,25 +346,20 @@ class _YtSongTileTrailingMenuState extends State<YtSongTileTrailingMenu> {
             context,
             MaterialPageRoute(
               builder: (context) => SearchPage(
-                query: widget.data.title.split('|')[0].split('(')[0],
+                query: widget.data['title'].toString(),
               ),
             ),
           );
         }
         if (value == 1 || value == 2 || value == 3) {
-          YouTubeServices()
-              .formatVideo(
-            video: widget.data,
-            quality: Hive.box('settings')
-                .get(
-                  'ytQuality',
-                  defaultValue: 'Low',
-                )
-                .toString(),
+          YtMusicService()
+              .getSongData(
+            videoId: widget.data['id'].toString(),
+            data: widget.data,
           )
               .then((songMap) {
             final MediaItem mediaItem =
-                MediaItemConverter.mapToMediaItem(songMap!);
+                MediaItemConverter.mapToMediaItem(songMap);
             if (value == 1) {
               playNext(mediaItem, context);
             }
@@ -370,12 +373,12 @@ class _YtSongTileTrailingMenuState extends State<YtSongTileTrailingMenu> {
         }
         if (value == 4) {
           launchUrl(
-            Uri.parse(widget.data.url),
+            Uri.parse('https://youtube.com/watch?v=${widget.data["id"]}'),
             mode: LaunchMode.externalApplication,
           );
         }
         if (value == 5) {
-          Share.share(widget.data.url);
+          Share.share('https://youtube.com/watch?v=${widget.data["id"]}');
         }
       },
     );

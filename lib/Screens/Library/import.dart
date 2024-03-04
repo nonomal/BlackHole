@@ -14,22 +14,23 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with BlackHole.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Copyright (c) 2021-2022, Ankit Sangwan
+ * Copyright (c) 2021-2023, Ankit Sangwan
  */
 
 import 'package:app_links/app_links.dart';
 import 'package:blackhole/APIs/spotify_api.dart';
 import 'package:blackhole/CustomWidgets/gradient_containers.dart';
-import 'package:blackhole/CustomWidgets/miniplayer.dart';
+import 'package:blackhole/CustomWidgets/image_card.dart';
 import 'package:blackhole/CustomWidgets/snackbar.dart';
 import 'package:blackhole/CustomWidgets/textinput_dialog.dart';
 import 'package:blackhole/Helpers/import_export_playlist.dart';
 import 'package:blackhole/Helpers/playlist.dart';
 import 'package:blackhole/Helpers/search_add_playlist.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:blackhole/Helpers/spotify_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:logging/logging.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -41,100 +42,103 @@ class ImportPlaylist extends StatelessWidget {
       Hive.box('settings').get('playlistNames')?.toList() as List? ??
           ['Favorite Songs'];
 
+  void _triggerImport({required String type, required BuildContext context}) {
+    switch (type) {
+      case 'file':
+        importFile(
+          context,
+          playlistNames,
+          settingsBox,
+        );
+      case 'spotify':
+        connectToSpotify(
+          context,
+          playlistNames,
+          settingsBox,
+        );
+      case 'youtube':
+        importYt(
+          context,
+          playlistNames,
+          settingsBox,
+        );
+      case 'jiosaavn':
+        importJioSaavn(
+          context,
+          playlistNames,
+          settingsBox,
+        );
+      case 'resso':
+        importResso(
+          context,
+          playlistNames,
+          settingsBox,
+        );
+      default:
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GradientContainer(
-      child: Column(
-        children: [
-          Expanded(
-            child: Scaffold(
-              backgroundColor: Colors.transparent,
-              appBar: AppBar(
-                title: Text(
-                  AppLocalizations.of(context)!.importPlaylist,
-                ),
-                centerTitle: true,
-                backgroundColor: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.transparent
-                    : Theme.of(context).colorScheme.secondary,
-                elevation: 0,
-              ),
-              body: ListView.builder(
-                shrinkWrap: true,
-                physics: const BouncingScrollPhysics(),
-                itemCount: 5,
-                itemBuilder: (cntxt, index) {
-                  return ListTile(
-                    title: Text(
-                      index == 0
-                          ? AppLocalizations.of(context)!.importFile
-                          : index == 1
-                              ? AppLocalizations.of(context)!.importSpotify
-                              : index == 2
-                                  ? AppLocalizations.of(context)!.importYt
-                                  : index == 3
-                                      ? AppLocalizations.of(
-                                          context,
-                                        )!
-                                          .importJioSaavn
-                                      : AppLocalizations.of(
-                                          context,
-                                        )!
-                                          .importResso,
-                    ),
-                    leading: SizedBox.square(
-                      dimension: 50,
-                      child: Center(
-                        child: Icon(
-                          index == 0
-                              ? MdiIcons.import
-                              : index == 1
-                                  ? MdiIcons.spotify
-                                  : index == 2
-                                      ? MdiIcons.youtube
-                                      : Icons.music_note_rounded,
-                          color: Theme.of(context).iconTheme.color,
-                        ),
-                      ),
-                    ),
-                    onTap: () {
-                      index == 0
-                          ? importFile(
-                              cntxt,
-                              playlistNames,
-                              settingsBox,
-                            )
-                          : index == 1
-                              ? connectToSpotify(
-                                  cntxt,
-                                  playlistNames,
-                                  settingsBox,
-                                )
-                              : index == 2
-                                  ? importYt(
-                                      cntxt,
-                                      playlistNames,
-                                      settingsBox,
-                                    )
-                                  : index == 3
-                                      ? importJioSaavn(
-                                          cntxt,
-                                          playlistNames,
-                                          settingsBox,
-                                        )
-                                      : importResso(
-                                          cntxt,
-                                          playlistNames,
-                                          settingsBox,
-                                        );
-                    },
-                  );
-                },
-              ),
-            ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: Text(
+            AppLocalizations.of(context)!.importPlaylist,
           ),
-          MiniPlayer(),
-        ],
+          centerTitle: true,
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? Colors.transparent
+              : Theme.of(context).colorScheme.secondary,
+          elevation: 0,
+        ),
+        body: ListView.builder(
+          shrinkWrap: true,
+          physics: const BouncingScrollPhysics(),
+          itemCount: 5,
+          itemBuilder: (cntxt, index) {
+            return ListTile(
+              title: Text(
+                [
+                  AppLocalizations.of(context)!.importFile,
+                  AppLocalizations.of(context)!.importSpotify,
+                  AppLocalizations.of(context)!.importYt,
+                  AppLocalizations.of(context)!.importJioSaavn,
+                  AppLocalizations.of(context)!.importResso,
+                ][index],
+              ),
+              leading: SizedBox.square(
+                dimension: 50,
+                child: Center(
+                  child: Icon(
+                    [
+                      MdiIcons.import,
+                      MdiIcons.spotify,
+                      MdiIcons.youtube,
+                      Icons.music_note_rounded,
+                      Icons.music_note_rounded,
+                    ][index],
+                    color: Theme.of(context).iconTheme.color,
+                  ),
+                ),
+              ),
+              onTap: () {
+                _triggerImport(
+                  type: [
+                    'file',
+                    'spotify',
+                    'youtube',
+                    'jiosaavn',
+                    'resso',
+                  ][index],
+                  context: context,
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -145,8 +149,7 @@ Future<void> importFile(
   List playlistNames,
   Box settingsBox,
 ) async {
-  final newPlaylistNames = await importPlaylist(context, playlistNames);
-  settingsBox.put('playlistNames', newPlaylistNames);
+  await importFilePlaylist(context, playlistNames);
 }
 
 Future<void> connectToSpotify(
@@ -154,24 +157,21 @@ Future<void> connectToSpotify(
   List playlistNames,
   Box settingsBox,
 ) async {
-  String code;
-  String accessToken =
-      settingsBox.get('spotifyAccessToken', defaultValue: 'null').toString();
-  String refreshToken =
-      settingsBox.get('spotifyRefreshToken', defaultValue: 'null').toString();
+  final String? accessToken = await retriveAccessToken();
 
-  if (accessToken == 'null' || refreshToken == 'null') {
+  if (accessToken == null) {
     launchUrl(
       Uri.parse(
         SpotifyApi().requestAuthorization(),
       ),
       mode: LaunchMode.externalApplication,
     );
-    AppLinks(
-      onAppLink: (Uri uri, String link) async {
-        closeInAppWebView();
+    final appLinks = AppLinks();
+    appLinks.allUriLinkStream.listen(
+      (uri) async {
+        final link = uri.toString();
         if (link.contains('code=')) {
-          code = link.split('code=')[1];
+          final code = link.split('code=')[1];
           settingsBox.put('spotifyAppCode', code);
           final currentTime = DateTime.now().millisecondsSinceEpoch / 1000;
           final List<String> data =
@@ -194,23 +194,6 @@ Future<void> connectToSpotify(
       },
     );
   } else {
-    final double expiredAt = Hive.box('settings')
-        .get('spotifyTokenExpireAt', defaultValue: 0) as double;
-    final currentTime = DateTime.now().millisecondsSinceEpoch / 1000;
-    if ((currentTime + 60) >= expiredAt) {
-      final List<String> data =
-          await SpotifyApi().getAccessToken(refreshToken: refreshToken);
-      if (data.isNotEmpty) {
-        accessToken = data[0];
-        Hive.box('settings').put('spotifyAccessToken', data[0]);
-        if (data[1] != 'null') {
-          refreshToken = data[1];
-          Hive.box('settings').put('spotifyRefreshToken', data[1]);
-        }
-        Hive.box('settings')
-            .put('spotifyTokenExpireAt', currentTime + int.parse(data[2]));
-      }
-    }
     await fetchPlaylists(
       accessToken,
       context,
@@ -225,41 +208,41 @@ Future<void> importYt(
   List playlistNames,
   Box settingsBox,
 ) async {
-  await showTextInputDialog(
+  showTextInputDialog(
     context: context,
     title: AppLocalizations.of(context)!.enterPlaylistLink,
     initialText: '',
     keyboardType: TextInputType.url,
-    onSubmitted: (value) async {
+    onSubmitted: (String value, BuildContext context) async {
       final String link = value.trim();
       Navigator.pop(context);
       final Map data = await SearchAddPlaylist.addYtPlaylist(link);
       if (data.isNotEmpty) {
-        if (data['title'] == '' && data['count'] == 0) {
+        if (data['songs'] == null || data['songs'].length == 0) {
+          Logger.root.severe(
+            'Failed to import YT playlist. Data not empty but title or the count is empty.',
+          );
           ShowSnackBar().showSnackBar(
             context,
             '${AppLocalizations.of(context)!.failedImport}\n${AppLocalizations.of(context)!.confirmViewable}',
             duration: const Duration(seconds: 3),
           );
         } else {
-          playlistNames.add(
-            data['title'] == '' ? 'Yt Playlist' : data['title'],
-          );
-          settingsBox.put(
-            'playlistNames',
-            playlistNames,
-          );
+          await addPlaylist(data['name'].toString(), data['songs'] as List);
 
-          await SearchAddPlaylist.showProgress(
-            data['count'] as int,
-            context,
-            SearchAddPlaylist.ytSongsAdder(
-              data['title'].toString(),
-              data['tracks'] as List,
-            ),
-          );
+          // await SearchAddPlaylist.showProgress(
+          //   (data['songs'] as List).length,
+          //   context,
+          //   SearchAddPlaylist.ytSongsAdder(
+          //     data['name'].toString(),
+          //     data['songs'] as List,
+          //   ),
+          // );
         }
       } else {
+        Logger.root.severe(
+          'Failed to import YT playlist. Data is empty.',
+        );
         ShowSnackBar().showSnackBar(
           context,
           AppLocalizations.of(context)!.failedImport,
@@ -274,12 +257,12 @@ Future<void> importResso(
   List playlistNames,
   Box settingsBox,
 ) async {
-  await showTextInputDialog(
+  showTextInputDialog(
     context: context,
     title: AppLocalizations.of(context)!.enterPlaylistLink,
     initialText: '',
     keyboardType: TextInputType.url,
-    onSubmitted: (value) async {
+    onSubmitted: (String value, BuildContext context) async {
       final String link = value.trim();
       Navigator.pop(context);
       final Map data = await SearchAddPlaylist.addRessoPlaylist(link);
@@ -305,6 +288,9 @@ Future<void> importResso(
           ),
         );
       } else {
+        Logger.root.severe(
+          'Failed to import Resso playlist. Data is empty.',
+        );
         ShowSnackBar().showSnackBar(
           context,
           AppLocalizations.of(context)!.failedImport,
@@ -327,7 +313,9 @@ Future<void> importSpotify(
     accessToken,
     playlistId,
   );
-  if (data.isNotEmpty) {
+  if (data.isNotEmpty &&
+      data['tracks'] != null &&
+      (data['tracks'] as List).isNotEmpty) {
     String playName = data['title'].toString();
     while (playlistNames.contains(playName) || await Hive.boxExists(playName)) {
       // ignore: use_string_buffers
@@ -348,6 +336,9 @@ Future<void> importSpotify(
       ),
     );
   } else {
+    Logger.root.severe(
+      'Failed to import Spotify playlist. Data is empty.',
+    );
     ShowSnackBar().showSnackBar(
       context,
       AppLocalizations.of(context)!.failedImport,
@@ -361,13 +352,13 @@ Future<void> importSpotifyViaLink(
   Box settingsBox,
   String accessToken,
 ) async {
-  await showTextInputDialog(
+  showTextInputDialog(
     context: context,
     title: AppLocalizations.of(context)!.enterPlaylistLink,
     initialText: '',
     keyboardType: TextInputType.url,
-    onSubmitted: (String value) async {
-      Navigator.pop(context);
+    onSubmitted: (String value, BuildContext ctxt) async {
+      Navigator.pop(ctxt);
       final String playlistId = value.split('?')[0].split('/').last;
       final playlistName = AppLocalizations.of(context)!.spotifyPublic;
       await importSpotify(
@@ -387,12 +378,12 @@ Future<void> importJioSaavn(
   List playlistNames,
   Box settingsBox,
 ) async {
-  await showTextInputDialog(
+  showTextInputDialog(
     context: context,
     title: AppLocalizations.of(context)!.enterPlaylistLink,
     initialText: '',
     keyboardType: TextInputType.url,
-    onSubmitted: (value) async {
+    onSubmitted: (String value, BuildContext context) async {
       final String link = value.trim();
       Navigator.pop(context);
       final Map data = await SearchAddPlaylist.addJioSaavnPlaylist(
@@ -401,9 +392,10 @@ Future<void> importJioSaavn(
 
       if (data.isNotEmpty) {
         final String playName = data['title'].toString();
-        addPlaylist(playName, data['tracks'] as List);
+        await addPlaylist(playName, data['tracks'] as List);
         playlistNames.add(playName);
       } else {
+        Logger.root.severe('Failed to import JioSaavn playlist. data is empty');
         ShowSnackBar().showSnackBar(
           context,
           AppLocalizations.of(context)!.failedImport,
@@ -439,6 +431,7 @@ Future<void> fetchPlaylists(
                   AppLocalizations.of(context)!.importPublicPlaylist,
                 ),
                 leading: Card(
+                  margin: EdgeInsets.zero,
                   elevation: 0,
                   color: Colors.transparent,
                   child: SizedBox.square(
@@ -477,28 +470,12 @@ Future<void> fetchPlaylists(
                           ? '$playTotal ${AppLocalizations.of(context)!.song}'
                           : '$playTotal ${AppLocalizations.of(context)!.songs}',
                     ),
-                    leading: Card(
-                      elevation: 8,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(7.0),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child:
+                    leading: imageCard(
+                      imageUrl:
                           (spotifyPlaylists[idx - 1]['images'] as List).isEmpty
-                              ? Image.asset('assets/cover.jpg')
-                              : CachedNetworkImage(
-                                  fit: BoxFit.cover,
-                                  errorWidget: (context, _, __) => const Image(
-                                    fit: BoxFit.cover,
-                                    image: AssetImage('assets/cover.jpg'),
-                                  ),
-                                  imageUrl:
-                                      '${spotifyPlaylists[idx - 1]["images"][0]['url'].replaceAll('http:', 'https:')}',
-                                  placeholder: (context, url) => const Image(
-                                    fit: BoxFit.cover,
-                                    image: AssetImage('assets/cover.jpg'),
-                                  ),
-                                ),
+                              ? ''
+                              : spotifyPlaylists[idx - 1]['images'][0]['url']
+                                  .toString(),
                     ),
                     onTap: () async {
                       Navigator.pop(context);
