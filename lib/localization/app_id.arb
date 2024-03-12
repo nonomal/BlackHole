@@ -722,5 +722,7 @@
   "restartRequired": "Anda perlu memulai ulang aplikasi",
   "@restartRequired": {},
   "volumeGestureEnabledSub": "Gunakan vertikal swipe pada Artwork di Layar Pemutar untuk mengontrol volume alih-alih menggeser pemutar ke bawah",
-  "@volumeGestureEnabledSub": {}
+  "@volumeGestureEnabledSub": {},
+  "restart": "Kamu mungkin perlu buka ulang aplikasi",
+  "@restart": {}
 }
