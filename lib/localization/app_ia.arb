@@ -560,5 +560,19 @@
   "genre": "Genere",
   "@genre": {},
   "genres": "Generes",
-  "@genres": {}
+  "@genres": {},
+  "showTopCharts": "Monstrar le successos musical",
+  "@showTopCharts": {},
+  "showTopChartsSub": "Monstrar le successos musical de Spotify in le schermo de initio",
+  "@showTopChartsSub": {},
+  "spotifyTopCharts": "Successos musical de Spotify",
+  "@spotifyTopCharts": {},
+  "successTagEdit": "Etiquettas modificate con successo!",
+  "@successTagEdit": {},
+  "top": "Successos",
+  "@top": {},
+  "topCharts": "Listas de successos",
+  "@topCharts": {},
+  "spotifyCharts": "Listas de Successos de Spotify",
+  "@spotifyCharts": {}
 }
